@@ -1,4 +1,32 @@
+function storageAPI() {
+  const hasBrowser = typeof browser !== 'undefined' && browser?.storage?.local;
+  const api = hasBrowser ? browser.storage.local : (chrome?.storage?.local);
+  function promisify(method) {
+    if (!api || typeof api[method] !== 'function') {
+      return () => Promise.reject(new Error('storage API unavailable'));
+    }
+    // If Promise-based (Firefox browser.* or chrome with promise support)
+    if (hasBrowser || api[method].length <= 1) {
+      return (...args) => api[method](...args);
+    }
+    // Callback-based (older chrome alias)
+    return (...args) => new Promise((resolve, reject) => {
+      api[method](...args, (res) => {
+        const err = (chrome && chrome.runtime && chrome.runtime.lastError) ? chrome.runtime.lastError : null;
+        if (err) reject(err);
+        else resolve(res);
+      });
+    });
+  }
+  return {
+    get: promisify('get'),
+    set: promisify('set'),
+    remove: promisify('remove'),
+  };
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
+  const storage = storageAPI();
   const input = document.getElementById('apiKey');
   const lang = document.getElementById('language');
   const provider = document.getElementById('provider');
@@ -23,12 +51,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function loadForProvider() {
     updateKeyLabel();
     const keyName = PROVIDER_KEYS[provider.value];
-    const stored = await chrome.storage.local.get([keyName]);
+    const stored = await storage.get([keyName]);
     input.value = stored?.[keyName] || '';
   }
 
   try {
-    const stored = await chrome.storage.local.get([
+    const stored = await storage.get([
       'provider',
       'targetLanguage',
       'geminiApiKey',
@@ -43,7 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   provider.addEventListener('change', async () => {
-    await chrome.storage.local.set({ provider: provider.value });
+    await storage.set({ provider: provider.value });
     await loadForProvider();
   });
 
@@ -68,7 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
     try {
-      await chrome.storage.local.set({ [keyName]: apiKey, targetLanguage, provider: provider.value });
+      await storage.set({ [keyName]: apiKey, targetLanguage, provider: provider.value });
       showMsg('Saved.', 'success');
     } catch (e) {
       console.error('Storage set error', e);
@@ -79,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   delBtn.addEventListener('click', async () => {
     const keyName = PROVIDER_KEYS[provider.value];
     try {
-      await chrome.storage.local.remove([keyName]);
+      await storage.remove([keyName]);
       input.value = '';
       showMsg('Key deleted.', 'success');
     } catch (e) {

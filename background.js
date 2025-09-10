@@ -1,11 +1,9 @@
-// Placeholder background service worker (MV3)
-// Set an 'R' badge to mimic an icon
+// MV2 background script
+// Set an 'R' badge if supported by the browser
 try {
-  if (chrome?.action?.setBadgeText) {
-    chrome.action.setBadgeBackgroundColor({ color: '#111827' });
-    chrome.action.setBadgeTextColor?.({ color: '#ffffff' });
-    chrome.action.setBadgeText({ text: 'R' });
+  const ba = chrome?.browserAction || chrome?.action;
+  if (ba?.setBadgeText) {
+    ba.setBadgeBackgroundColor?.({ color: '#111827' });
+    ba.setBadgeText({ text: 'R' });
   }
 } catch (_) {}
-
-// MV2-style background script for Firefox compatibility; no extra logic required

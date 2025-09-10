@@ -24,8 +24,7 @@
       "strict_min_version": "109.0",
       "update_url": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/updates.json",
       "data_collection_permissions": {
-        "collects_technical_data": false,
-        "collects_interaction_data": false
+        "required": ["none"]
       }
     }
   },

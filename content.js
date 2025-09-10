@@ -1,4 +1,30 @@
 (() => {
+  function storageAPI() {
+    const hasBrowser = typeof browser !== 'undefined' && browser?.storage?.local;
+    const api = hasBrowser ? browser.storage.local : (chrome?.storage?.local);
+    function promisify(method) {
+      if (!api || typeof api[method] !== 'function') {
+        return () => Promise.reject(new Error('storage API unavailable'));
+      }
+      if (hasBrowser || api[method].length <= 1) {
+        return (...args) => api[method](...args);
+      }
+      return (...args) => new Promise((resolve, reject) => {
+        api[method](...args, (res) => {
+          const err = (chrome && chrome.runtime && chrome.runtime.lastError) ? chrome.runtime.lastError : null;
+          if (err) reject(err);
+          else resolve(res);
+        });
+      });
+    }
+    return {
+      get: promisify('get'),
+      set: promisify('set'),
+      remove: promisify('remove'),
+    };
+  }
+
+  const storage = storageAPI();
   const TARGET_PREFIX = 'https://readwise.io/bookreview/';
   if (!location.href.startsWith(TARGET_PREFIX)) return;
 
@@ -14,7 +40,7 @@
 
   async function getSettings() {
     try {
-      const result = await chrome.storage.local.get([
+      const result = await storage.get([
         'provider',
         'targetLanguage',
         'geminiApiKey',
@@ -37,7 +63,7 @@
           if (provider === 'gemini') saveObj.geminiApiKey = apiKey.trim();
           if (provider === 'openrouter') saveObj.openrouterApiKey = apiKey.trim();
           if (provider === 'openai') saveObj.openaiApiKey = apiKey.trim();
-          await chrome.storage.local.set(saveObj);
+          await storage.set(saveObj);
         } else {
           throw new Error(`${provider} API key is required.`);
         }
@@ -178,7 +204,7 @@
       // Read target language for label
       let lang = 'en';
       try {
-        const { targetLanguage } = await chrome.storage.local.get(['targetLanguage']);
+        const { targetLanguage } = await storage.get(['targetLanguage']);
         if (targetLanguage) lang = String(targetLanguage).toLowerCase();
       } catch (_) {}
 
@@ -252,7 +278,7 @@
 
   // Update button labels if target language changes from the control panel
   try {
-    chrome.storage.onChanged.addListener((changes, area) => {
+    (browser?.storage?.onChanged || chrome?.storage?.onChanged)?.addListener((changes, area) => {
       if (area !== 'local' || !changes.targetLanguage) return;
       const newLang = String(changes.targetLanguage.newValue || 'en').toUpperCase();
       document.querySelectorAll(`.${BUTTON_CLASS}`).forEach((btn) => {

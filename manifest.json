@@ -3,11 +3,10 @@
   "name": "FF Readwise Translator Plugin",
   "version": "1.0.0",
   "description": "Translate Readwise highlights inline using Gemini, OpenAI, or OpenRouter.",
-  
+
   "permissions": [
     "activeTab",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
@@ -15,7 +14,7 @@
     "https://openrouter.ai/*"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "service_worker": "background.js"
   },
   "action": {
     "default_title": "Readwise Translator",

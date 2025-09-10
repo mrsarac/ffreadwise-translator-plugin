@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>FF Readwise Translator</title>
+    <style>
+      body { font-family: sans-serif; padding: 12px; width: 280px; }
+      label { display: block; font-weight: 600; margin-bottom: 6px; }
+      input[type="text"] { width: 100%; box-sizing: border-box; padding: 6px; }
+      button { margin-top: 8px; }
+      .hint { color: #666; font-size: 12px; margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <label for="provider">Provider</label>
+    <select id="provider">
+      <option value="gemini">Gemini</option>
+      <option value="openrouter">OpenRouter</option>
+      <option value="openai">OpenAI (ChatGPT)</option>
+    </select>
+
+    <label id="apiKeyLabel" for="apiKey" style="margin-top:12px">API Key</label>
+    <input id="apiKey" type="text" placeholder="Enter API key" />
+
+    <label for="language" style="margin-top:12px">Target Language</label>
+    <select id="language">
+      <option value="en">English (en)</option>
+      <option value="tr">Turkish (tr)</option>
+      <option value="de">German (de)</option>
+      <option value="fr">French (fr)</option>
+      <option value="es">Spanish (es)</option>
+      <option value="it">Italian (it)</option>
+      <option value="pt">Portuguese (pt)</option>
+      <option value="ru">Russian (ru)</option>
+      <option value="ar">Arabic (ar)</option>
+      <option value="zh">Chinese (zh)</option>
+      <option value="ja">Japanese (ja)</option>
+      <option value="ko">Korean (ko)</option>
+    </select>
+
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button id="save">Save</button>
+      <button id="deleteKey" style="background:#b91c1c;color:#fff;">Delete Key</button>
+    </div>
+    <div class="hint">Keys and settings are saved locally in your browser.</div>
+    <script src="popup.js"></script>
+  </body>
+  </html>

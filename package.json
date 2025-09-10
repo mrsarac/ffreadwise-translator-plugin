@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "FF Readwise Translator Plugin",
+  "version": "1.0",
+  "description": "Readwise içeriklerini çevirmek için Firefox eklentisi.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon.png"
+  },
+  "scripts": {
+    "bmad:refresh": "bmad-method install -f -i codex",
+    "bmad:list": "bmad-method list:agents",
+    "bmad:validate": "bmad-method validate"
+  }
+}

@@ -75,12 +75,12 @@
 
     if (!res.ok) {
       const msg = await res.text().catch(() => '');
-      throw new Error(`Gemini API hatası: ${res.status} ${msg}`);
+      throw new Error(`Gemini API error: ${res.status} ${msg}`);
     }
 
     const data = await res.json();
     const textOut = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textOut) throw new Error('Gemini beklenen yanıtı döndürmedi.');
+    if (!textOut) throw new Error('Gemini returned an unexpected response.');
     return textOut.trim();
   }
 
@@ -161,10 +161,10 @@
 
   function createButton(langLabel) {
     const btn = document.createElement('button');
-    btn.textContent = `Translate (${(langLabel || 'TR').toUpperCase()})`;
+    btn.textContent = `Translate (${(langLabel || 'EN').toUpperCase()})`;
     btn.className = `button ${BUTTON_CLASS}`;
     btn.style.marginLeft = '8px';
-    btn.title = 'Metni hedef dile çevir (Gemini)';
+    btn.title = 'Translate to the target language';
     return btn;
   }
 
@@ -254,7 +254,7 @@
   try {
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area !== 'local' || !changes.targetLanguage) return;
-      const newLang = String(changes.targetLanguage.newValue || 'tr').toUpperCase();
+      const newLang = String(changes.targetLanguage.newValue || 'en').toUpperCase();
       document.querySelectorAll(`.${BUTTON_CLASS}`).forEach((btn) => {
         if (btn && btn.textContent) {
           btn.textContent = `Translate (${newLang})`;

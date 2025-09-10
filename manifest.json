@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "FF Readwise Translator Plugin",
   "version": "1.0.0",
-  "description": "Readwise içeriklerini çeviren Firefox eklentisi.",
+  "description": "Translate Readwise highlights inline using Gemini, OpenAI, or OpenRouter.",
   
   "permissions": [
     "activeTab",

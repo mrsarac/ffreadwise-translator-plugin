@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btn = document.getElementById('save');
   const delBtn = document.getElementById('deleteKey');
   const apiKeyLabel = document.getElementById('apiKeyLabel');
+  const msgBox = document.getElementById('msg');
 
   const PROVIDER_KEYS = {
     gemini: 'geminiApiKey',
@@ -46,20 +47,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadForProvider();
   });
 
+  function showMsg(text, type = 'success', timeout = 1800) {
+    if (!msgBox) return;
+    msgBox.textContent = text;
+    msgBox.className = `msg show ${type}`;
+    if (timeout) {
+      setTimeout(() => {
+        msgBox.className = 'msg';
+        msgBox.textContent = '';
+      }, timeout);
+    }
+  }
+
   btn.addEventListener('click', async () => {
     const apiKey = input.value.trim();
-    const targetLanguage = lang.value;
+    const targetLanguage = (lang.value || '').trim().toLowerCase() || 'en';
     const keyName = PROVIDER_KEYS[provider.value];
     if (!apiKey) {
-      alert('Please enter a valid API key.');
+      showMsg('Please enter a valid API key.', 'error');
       return;
     }
     try {
       await chrome.storage.local.set({ [keyName]: apiKey, targetLanguage, provider: provider.value });
-      alert('Saved.');
+      showMsg('Saved.', 'success');
     } catch (e) {
       console.error('Storage set error', e);
-      alert('Could not save.');
+      showMsg('Could not save.', 'error');
     }
   });
 
@@ -68,10 +81,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       await chrome.storage.local.remove([keyName]);
       input.value = '';
-      alert('Key deleted.');
+      showMsg('Key deleted.', 'success');
     } catch (e) {
       console.error('Storage remove error', e);
-      alert('Could not delete key.');
+      showMsg('Could not delete key.', 'error');
     }
   });
 });

@@ -6,9 +6,13 @@
     <style>
       body { font-family: sans-serif; padding: 12px; width: 280px; }
       label { display: block; font-weight: 600; margin-bottom: 6px; }
-      input[type="text"] { width: 100%; box-sizing: border-box; padding: 6px; }
+      input[type="text"], select { width: 100%; box-sizing: border-box; padding: 6px; }
       button { margin-top: 8px; }
       .hint { color: #666; font-size: 12px; margin-top: 8px; }
+      .msg { display:none; margin-top:8px; max-width:100%; box-sizing:border-box; padding:8px; border-radius:6px; font-size:12px; line-height:1.3; }
+      .msg.show { display:block; }
+      .msg.success { background:#ecfdf5; color:#065f46; border:1px solid #10b981; }
+      .msg.error { background:#fef2f2; color:#991b1b; border:1px solid #ef4444; }
     </style>
   </head>
   <body>
@@ -22,27 +26,27 @@
     <label id="apiKeyLabel" for="apiKey" style="margin-top:12px">API Key</label>
     <input id="apiKey" type="text" placeholder="Enter API key" />
 
-    <label for="language" style="margin-top:12px">Target Language</label>
-    <select id="language">
-      <option value="en">English (en)</option>
-      <option value="tr">Turkish (tr)</option>
-      <option value="de">German (de)</option>
-      <option value="fr">French (fr)</option>
-      <option value="es">Spanish (es)</option>
-      <option value="it">Italian (it)</option>
-      <option value="pt">Portuguese (pt)</option>
-      <option value="ru">Russian (ru)</option>
-      <option value="ar">Arabic (ar)</option>
-      <option value="zh">Chinese (zh)</option>
-      <option value="ja">Japanese (ja)</option>
-      <option value="ko">Korean (ko)</option>
-    </select>
+    <label for="language" style="margin-top:12px">Target Language Code</label>
+    <input id="language" type="text" placeholder="e.g., en, tr, de" />
+    <div class="hint">
+      Use ISO 639-1 codes (2 letters). See list:
+      <a href="https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes" target="_blank" rel="noopener noreferrer">ISO 639-1 codes</a>
+    </div>
 
     <div style="margin-top:10px; display:flex; gap:8px;">
       <button id="save">Save</button>
       <button id="deleteKey" style="background:#b91c1c;color:#fff;">Delete Key</button>
     </div>
+    <div id="msg" class="msg" role="status" aria-live="polite"></div>
     <div class="hint">Keys and settings are saved locally in your browser.</div>
+
+    <hr style="margin:12px 0; border:none; border-top:1px solid #e5e7eb;" />
+    <div style="font-size:12px; color:#374151;">
+      <div style="font-weight:600; margin-bottom:4px;">Models in use</div>
+      <div>Gemini: <code>gemini-1.5-flash</code></div>
+      <div>OpenAI: <code>gpt-4o-mini</code></div>
+      <div>OpenRouter: <code>openai/gpt-4o-mini</code></div>
+    </div>
     <script src="popup.js"></script>
   </body>
   </html>

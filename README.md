@@ -9,6 +9,11 @@ Features
 - Per-provider API keys stored locally in your browser
 - Small control panel opened from the toolbar button (badge “R”)
 
+Demo
+Quick demo of translating a Readwise highlight:
+
+![FF Readwise Translator Demo](assets/usage-demo.gif)
+
 Providers and Models
 - Gemini: gemini-1.5-flash
 - OpenAI: gpt-4o-mini
@@ -63,4 +68,3 @@ Security & Privacy
 License
 This project is intended to be open source under the MIT License.
 If you want, we can add a `LICENSE` file to the repository explicitly.
-

@@ -171,6 +171,29 @@
 
   async function translateWithProvider(text, settings) {
     const { provider, apiKey, targetLanguage } = settings;
+    // Prefer background relay to avoid CORS issues (Chrome MV3)
+    try {
+      if (chrome?.runtime?.sendMessage) {
+        const res = await new Promise((resolve) => {
+          try {
+            chrome.runtime.sendMessage(
+              { type: 'rw.translate', text, provider, apiKey, targetLanguage },
+              (response) => resolve(response)
+            );
+          } catch (e) {
+            resolve(null);
+          }
+        });
+        if (res && typeof res === 'object') {
+          if (res.ok) return res.text;
+          if (res.ok === false && res.error) throw new Error(res.error);
+        }
+      }
+    } catch (_) {
+      // Fallback to direct fetch below
+    }
+
+    // Fallback: direct fetch from content script
     if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage);
     if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage);
     if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage);

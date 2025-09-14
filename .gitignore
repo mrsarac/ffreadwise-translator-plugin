@@ -1,3 +1,13 @@
 # BMAD (local only)
 .bmad-core/
 .bmad-*/
+
+# Do not commit sensitive keys or packaged CRX files
+*.pem
+*.crx
+
+# Build artifacts (keep Firefox self-host files only)
+build/
+dist/
+!dist/updates.json
+!dist/*.xpi

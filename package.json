@@ -1,22 +1,24 @@
 {
-  "manifest_version": 3,
-  "name": "FF Readwise Translator Plugin",
-  "version": "1.0",
-  "description": "Firefox extension to translate Readwise content.",
-  "permissions": [
-    "activeTab",
-    "storage"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icons/icon.png"
-  },
+  "name": "ffreadwise-translator-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Build scripts and packaging for Chrome/Firefox bundles",
   "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:chrome": "node scripts/build.mjs chrome",
+    "build:firefox": "node scripts/build.mjs firefox",
+    "pack:chrome": "mkdir -p dist && cd build/chrome && zip -qr ../../dist/chrome.zip .",
+    "pack:firefox": "web-ext build -s build/firefox -a dist",
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs --bump patch",
+    "release:minor": "node scripts/release.mjs --bump minor",
+    "release:major": "node scripts/release.mjs --bump major",
     "bmad:refresh": "bmad-method install -f -i codex",
     "bmad:list": "bmad-method list:agents",
     "bmad:validate": "bmad-method validate"
+  },
+  "devDependencies": {
+    "web-ext": "^8.2.0"
   }
 }

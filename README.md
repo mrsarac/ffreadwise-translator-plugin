@@ -20,7 +20,7 @@ Providers and Models
 - OpenRouter: openai/gpt-4o-mini
 
 Permissions
-- `activeTab`, `storage`, `scripting`
+- `activeTab`, `storage`
 - Host permissions:
   - `https://generativelanguage.googleapis.com/*` (Gemini)
   - `https://api.openai.com/*` (OpenAI)
@@ -28,14 +28,15 @@ Permissions
 
 Installation
 Firefox (Temporary Add-on)
-1. Open `about:debugging#/runtime/this-firefox`
-2. Click “Load Temporary Add-on…” and select the `manifest.json` in this folder
-3. You should see a toolbar button with an “R” badge
+1. Run `npm run build:firefox`
+2. Open `about:debugging#/runtime/this-firefox`
+3. Click “Load Temporary Add-on…” and select `build/firefox/manifest.json`
+4. You should see a toolbar button with an “R” badge
 
 Chromium/Chrome (Unpacked)
 1. Open `chrome://extensions`
 2. Enable “Developer mode”
-3. Click “Load unpacked” and select this folder
+3. Click “Load unpacked” and select `build/chrome` after running the build (see below)
 
 Usage
 1. Click the toolbar button to open the control panel
@@ -53,16 +54,43 @@ Notes
 - You can delete a stored key per provider from the control panel
 
 Development
-- No build steps required; files are plain JS/HTML/CSS
-- Key files:
-  - `manifest.json`: Extension manifest (Firefox-compatible background script)
-  - `background.js`: Sets a simple “R” badge on the action icon
+- Dual target setup (one repo → Chrome MV3 & Firefox MV2)
+  - `manifest.chrome.json`: Chrome MV3 manifest (service worker background)
+  - `manifest.firefox.json`: Firefox MV2 manifest (background script)
+  - `scripts/build.mjs`: Copies sources into `build/{chrome|firefox}` with correct manifest
+  - `background.js`: Handles badge + translation relay via messaging
   - `popup.html` / `popup.js`: Control panel for provider, API key, and language
-  - `content.js`: Injects the translate button and calls the selected provider
+  - `content.js`: Injects the Translate button; requests translation via background (avoids CORS)
+
+Build & Publish
+- Prereqs: Node 18+, optional `web-ext` (installed automatically via devDependencies on `npm i`)
+
+Build bundles
+- `npm run build`       → builds both `build/chrome` and `build/firefox`
+- `npm run build:chrome` → builds only Chrome bundle
+- `npm run build:firefox` → builds only Firefox bundle
+
+Pack bundles
+- Chrome zip: `npm run pack:chrome` → `dist/chrome.zip`
+- Firefox XPI: `npm run pack:firefox` → outputs to `dist/`
+
+Repo hygiene
+- Do not commit build outputs: `build/` and packaged zips are ignored.
+- If you self-host Firefox updates, keep only `dist/updates.json` and the signed `.xpi` you link there.
+- For Chrome, upload `dist/chrome.zip` to the Web Store; do not commit it.
+
+Load for local testing
+- Chrome: `chrome://extensions` → Load unpacked → `build/chrome`
+- Firefox: `about:debugging#/runtime/this-firefox` → Load Temporary Add-on → select `build/firefox/manifest.json`
+
+Store submission notes
+- Chrome Web Store: MV3 is required. Icons (at least 128×128) are recommended for listing quality.
+- Firefox Add-ons (AMO): If publishing on AMO, remove or ignore `update_url` under `browser_specific_settings.gecko`.
+  Self-hosted updates use that field; AMO-managed updates do not.
 
 Security & Privacy
 - API keys are stored locally on your machine via browser storage
-- Requests are sent directly from the content script to the selected provider API over HTTPS
+- Requests are relayed from the background (service worker/page) to avoid CORS issues, over HTTPS
 - No usage analytics or external calls beyond the chosen provider
 
 License

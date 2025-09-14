@@ -8,8 +8,9 @@ try {
   }
 } catch (_) {}
 
-async function translateWithGemini(text, apiKey, targetLanguage = 'en') {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+async function translateWithGemini(text, apiKey, targetLanguage = 'en', model = 'gemini-1.5-flash') {
+  const modelId = String(model || 'gemini-1.5-flash');
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const prompt = [
     `Translate the following text to ${targetLanguage}.`,
     'Preserve meaning, tone, and basic formatting.',
@@ -40,10 +41,10 @@ async function translateWithGemini(text, apiKey, targetLanguage = 'en') {
   return String(textOut).trim();
 }
 
-async function translateWithOpenAI(text, apiKey, targetLanguage = 'en') {
+async function translateWithOpenAI(text, apiKey, targetLanguage = 'en', model = 'gpt-4o-mini') {
   const endpoint = 'https://api.openai.com/v1/chat/completions';
   const body = {
-    model: 'gpt-4o-mini',
+    model: String(model || 'gpt-4o-mini'),
     messages: [
       { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
       { role: 'user', content: text },
@@ -68,10 +69,10 @@ async function translateWithOpenAI(text, apiKey, targetLanguage = 'en') {
   return String(textOut).trim();
 }
 
-async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en') {
+async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en', model = 'openai/gpt-4o-mini') {
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
   const body = {
-    model: 'openai/gpt-4o-mini',
+    model: String(model || 'openai/gpt-4o-mini'),
     messages: [
       { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
       { role: 'user', content: text },
@@ -99,10 +100,10 @@ async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en') {
   return String(textOut).trim();
 }
 
-async function translateWithProvider(text, provider, apiKey, targetLanguage) {
-  if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage);
-  if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage);
-  if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage);
+async function translateWithProvider(text, provider, apiKey, targetLanguage, model) {
+  if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage, model);
+  if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage, model);
+  if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage, model);
   throw new Error(`Unsupported provider: ${provider}`);
 }
 
@@ -112,11 +113,13 @@ try {
     if (!msg || msg.type !== 'rw.translate') return;
     (async () => {
       try {
-        const { text, provider, apiKey, targetLanguage } = msg;
-        const out = await translateWithProvider(text, provider, apiKey, targetLanguage);
+        const { text, provider, apiKey, targetLanguage, model } = msg;
+        const out = await translateWithProvider(text, provider, apiKey, targetLanguage, model);
         sendResponse({ ok: true, text: out });
       } catch (e) {
-        sendResponse({ ok: false, error: e?.message || String(e) });
+        // Provide a helpful hint if the model looks invalid
+        const hint = (e?.message || '').toLowerCase().includes('model') ? ' (Check the selected model in the extension settings.)' : '';
+        sendResponse({ ok: false, error: (e?.message || String(e)) + hint });
       }
     })();
     return true; // keep the channel open for async response

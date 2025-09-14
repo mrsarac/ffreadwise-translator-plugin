@@ -27,9 +27,10 @@
   const storage = storageAPI();
 
   const BUTTON_CLASS = 'rw-translate-btn';
-  // Support both book review and daily review detail containers
+  // Support bookreview, dailyreview, and reviews/review detail containers
   const CONTAINER_SELECTOR = '.highlights-white-container.highlight-detail-list, .highlights-white-container.highlight-detail-review';
   const CONTAINER_ROOT_SELECTOR = '.highlights-white-container';
+  const SCAN_INTERVAL_MS = 1500; // periodic safety scan
   const ACTIONS_SELECTOR = '.highlight-top-bar .edit-highlight-area .highlight-top-bar-actions';
   const EDITABLE_SELECTOR = '.highlight-text.editing-text';
 
@@ -46,6 +47,9 @@
         'geminiApiKey',
         'openrouterApiKey',
         'openaiApiKey',
+        'geminiModel',
+        'openrouterModel',
+        'openaiModel',
       ]);
 
       const provider = result?.provider || 'gemini';
@@ -56,6 +60,18 @@
         openai: result?.openaiApiKey || '',
       };
       let apiKey = keyMap[provider] || '';
+      // Provider-default models with override from storage
+      const defaultModels = {
+        gemini: 'gemini-1.5-flash',
+        openrouter: 'openai/gpt-4o-mini',
+        openai: 'gpt-4o-mini',
+      };
+      const modelMap = {
+        gemini: result?.geminiModel || defaultModels.gemini,
+        openrouter: result?.openrouterModel || defaultModels.openrouter,
+        openai: result?.openaiModel || defaultModels.openai,
+      };
+      const model = modelMap[provider];
       if (!apiKey) {
         apiKey = prompt(`Enter ${provider} API key (stored locally):`) || '';
         if (apiKey.trim()) {
@@ -68,14 +84,15 @@
           throw new Error(`${provider} API key is required.`);
         }
       }
-      return { provider, apiKey, targetLanguage };
+      return { provider, apiKey, targetLanguage, model };
     } catch (e) {
       throw e;
     }
   }
 
-  async function translateWithGemini(text, apiKey, targetLanguage = 'en') {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+  async function translateWithGemini(text, apiKey, targetLanguage = 'en', model = 'gemini-1.5-flash') {
+    const modelId = String(model || 'gemini-1.5-flash');
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     const prompt = [
       `Translate the following text to ${targetLanguage}.`,
       'Preserve meaning, tone, and basic formatting.',
@@ -110,10 +127,10 @@
     return textOut.trim();
   }
 
-  async function translateWithOpenAI(text, apiKey, targetLanguage = 'en') {
+  async function translateWithOpenAI(text, apiKey, targetLanguage = 'en', model = 'gpt-4o-mini') {
     const endpoint = 'https://api.openai.com/v1/chat/completions';
     const body = {
-      model: 'gpt-4o-mini',
+      model: String(model || 'gpt-4o-mini'),
       messages: [
         { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
         { role: 'user', content: text },
@@ -138,10 +155,10 @@
     return String(textOut).trim();
   }
 
-  async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en') {
+  async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en', model = 'openai/gpt-4o-mini') {
     const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
     const body = {
-      model: 'openai/gpt-4o-mini',
+      model: String(model || 'openai/gpt-4o-mini'),
       messages: [
         { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
         { role: 'user', content: text },
@@ -170,14 +187,14 @@
   }
 
   async function translateWithProvider(text, settings) {
-    const { provider, apiKey, targetLanguage } = settings;
+    const { provider, apiKey, targetLanguage, model } = settings;
     // Prefer background relay to avoid CORS issues (Chrome MV3)
     try {
       if (chrome?.runtime?.sendMessage) {
         const res = await new Promise((resolve) => {
           try {
             chrome.runtime.sendMessage(
-              { type: 'rw.translate', text, provider, apiKey, targetLanguage },
+              { type: 'rw.translate', text, provider, apiKey, targetLanguage, model },
               (response) => resolve(response)
             );
           } catch (e) {
@@ -194,9 +211,9 @@
     }
 
     // Fallback: direct fetch from content script
-    if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage);
-    if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage);
-    if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage);
+    if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage, model);
+    if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage, model);
+    if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage, model);
     throw new Error(`Unsupported provider: ${provider}`);
   }
 
@@ -299,14 +316,29 @@
             });
           }
         });
+      } else if (m.type === 'attributes' && m.attributeName === 'class') {
+        const el = m.target;
+        if (!(el instanceof HTMLElement)) continue;
+        // If a container's visibility or state toggled, try attaching again
+        if (el.matches(CONTAINER_SELECTOR)) {
+          attachButton(el);
+        } else if (el.matches(ACTIONS_SELECTOR)) {
+          const container = el.closest(CONTAINER_ROOT_SELECTOR);
+          if (container) attachButton(container);
+        }
       }
     }
   });
 
   observer.observe(document.documentElement || document.body, {
     childList: true,
+    attributes: true,
+    attributeFilter: ['class'],
     subtree: true,
   });
+
+  // Periodic scan as a fallback for SPA updates or non-childList changes
+  setInterval(scan, SCAN_INTERVAL_MS);
 
   // Update button labels if target language changes from the control panel
   try {

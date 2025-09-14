@@ -34,7 +34,11 @@
         "https://readwise.io/bookreview",
         "https://readwise.io/bookreview/*",
         "https://readwise.io/dailyreview",
-        "https://readwise.io/dailyreview/*"
+        "https://readwise.io/dailyreview/*",
+        "https://readwise.io/review",
+        "https://readwise.io/review/*",
+        "https://readwise.io/reviews",
+        "https://readwise.io/reviews/*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle"

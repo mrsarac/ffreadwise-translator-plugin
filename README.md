@@ -6,6 +6,7 @@ Features
 - Inline translate button on Readwise edit view
 - Multiple providers: Gemini, OpenAI, OpenRouter
 - Custom target language code (ISO 639-1, e.g., en, tr, de)
+- Configurable model per provider with sensible defaults
 - Per-provider API keys stored locally in your browser
 - Small control panel opened from the toolbar button (badge “R”)
 
@@ -15,9 +16,11 @@ Quick demo of translating a Readwise highlight:
 ![FF Readwise Translator Demo](assets/usage-demo.gif)
 
 Providers and Models
-- Gemini: gemini-1.5-flash
-- OpenAI: gpt-4o-mini
-- OpenRouter: openai/gpt-4o-mini
+- Defaults (editable in popup):
+  - Gemini: gemini-1.5-flash
+  - OpenAI: gpt-4o-mini
+  - OpenRouter: openai/gpt-4o-mini
+  You can override these in the extension popup. If a model becomes deprecated, just update the field; no code changes needed.
 
 Permissions
 - `activeTab`, `storage`
@@ -42,11 +45,12 @@ Usage
 1. Click the toolbar button to open the control panel
 2. Select Provider (Gemini, OpenRouter, or OpenAI)
 3. Paste the corresponding API key
-4. Enter your target language code (ISO 639-1, e.g., `en`, `tr`, `de`). A reference list is available here:
+4. Optionally set the Model (leave blank to use default shown). This makes future model changes easy without code updates.
+5. Enter your target language code (ISO 639-1, e.g., `en`, `tr`, `de`). A reference list is available here:
    https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
-5. Click Save
-6. Go to `https://readwise.io/bookreview/` or `https://readwise.io/dailyreview`, open a highlight in edit mode
-7. Click the “Translate (XX)” button next to Save; the text is translated in place
+6. Click Save
+7. Go to `https://readwise.io/bookreview/` or `https://readwise.io/dailyreview`, open a highlight in edit mode
+8. Click the “Translate (XX)” button next to Save; the text is translated in place
 
 Notes
 - Keys and settings are saved locally via `chrome.storage.local`

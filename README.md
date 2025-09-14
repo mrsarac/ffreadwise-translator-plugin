@@ -45,7 +45,7 @@ Usage
 4. Enter your target language code (ISO 639-1, e.g., `en`, `tr`, `de`). A reference list is available here:
    https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 5. Click Save
-6. Go to `https://readwise.io/bookreview/`, open a highlight in edit mode
+6. Go to `https://readwise.io/bookreview/` or `https://readwise.io/dailyreview`, open a highlight in edit mode
 7. Click the “Translate (XX)” button next to Save; the text is translated in place
 
 Notes
@@ -63,7 +63,7 @@ Development
   - `content.js`: Injects the Translate button; requests translation via background (avoids CORS)
 
 Build & Publish
-- Prereqs: Node 18+, optional `web-ext` (installed automatically via devDependencies on `npm i`)
+- Prereqs: Node 18+, `zip` CLI (for packaging). `web-ext` is optional and not required by the default scripts.
 
 Build bundles
 - `npm run build`       → builds both `build/chrome` and `build/firefox`
@@ -72,7 +72,11 @@ Build bundles
 
 Pack bundles
 - Chrome zip: `npm run pack:chrome` → `dist/chrome.zip`
-- Firefox XPI: `npm run pack:firefox` → outputs to `dist/`
+- Firefox XPI: `npm run pack:firefox` → `dist/ffreadwise-translator-plugin-<version>.xpi`
+
+Notes on Firefox packaging
+- The `pack:firefox` script zips `build/firefox` into an `.xpi` using the system `zip` tool; no `web-ext` install is needed.
+- If `build/firefox` does not exist, run `npm run build:firefox` first.
 
 Repo hygiene
 - Do not commit build outputs: `build/` and packaged zips are ignored.

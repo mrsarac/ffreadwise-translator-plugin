@@ -25,11 +25,11 @@
   }
 
   const storage = storageAPI();
-  const TARGET_PREFIX = 'https://readwise.io/bookreview/';
-  if (!location.href.startsWith(TARGET_PREFIX)) return;
 
   const BUTTON_CLASS = 'rw-translate-btn';
-  const CONTAINER_SELECTOR = '.highlights-white-container.highlight-detail-list';
+  // Support both book review and daily review detail containers
+  const CONTAINER_SELECTOR = '.highlights-white-container.highlight-detail-list, .highlights-white-container.highlight-detail-review';
+  const CONTAINER_ROOT_SELECTOR = '.highlights-white-container';
   const ACTIONS_SELECTOR = '.highlight-top-bar .edit-highlight-area .highlight-top-bar-actions';
   const EDITABLE_SELECTOR = '.highlight-text.editing-text';
 
@@ -288,6 +288,15 @@
             attachButton(node);
           } else if (node.querySelector?.(CONTAINER_SELECTOR)) {
             node.querySelectorAll(CONTAINER_SELECTOR).forEach(attachButton);
+          } else if (node.matches?.(ACTIONS_SELECTOR)) {
+            // Actions area appeared after entering edit mode; attach to its container
+            const container = node.closest(CONTAINER_ROOT_SELECTOR);
+            if (container) attachButton(container);
+          } else if (node.querySelector?.(ACTIONS_SELECTOR)) {
+            node.querySelectorAll(ACTIONS_SELECTOR).forEach((act) => {
+              const container = act.closest(CONTAINER_ROOT_SELECTOR);
+              if (container) attachButton(container);
+            });
           }
         });
       }
@@ -311,4 +320,45 @@
       });
     });
   } catch (_) {}
+
+  // Make the "Edit" label act like the Edit icon (open edit area)
+  // Some parts of the page only bind click on the icon, not the label.
+  // We delegate to capture clicks on the label and forward to the icon/parent.
+  document.addEventListener('click', (evt) => {
+    const target = evt.target;
+    if (!(target instanceof HTMLElement)) return;
+
+    // Find a label within icon area
+    const labelEl = target.closest('.icon-label');
+    if (!labelEl) return;
+
+    const labelText = (labelEl.textContent || '').trim().toLowerCase();
+    let isEdit = labelText === 'edit';
+    // Fallback for localized UI: identify the Edit item by its icon (note.svg)
+    if (!isEdit) {
+      const p = labelEl.closest('.icon-parent');
+      if (p && p.querySelector('img[src*="note."]')) isEdit = true;
+    }
+    if (!isEdit) return;
+
+    const iconParent = labelEl.closest('.icon-parent');
+    if (!iconParent) return;
+
+    // Prefer clicking an interactive child (img/button/svg), else the parent itself
+    const clickable = iconParent.querySelector('button, [role="button"], img, svg');
+    const toClick = clickable || iconParent;
+
+    // Avoid recursion if our synthetic click bubbles back
+    if (toClick.dataset && toClick.dataset.rwSyntheticClick === '1') return;
+    try {
+      if (toClick instanceof HTMLElement) {
+        toClick.dataset.rwSyntheticClick = '1';
+        toClick.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        // Clean up the marker shortly after to allow future clicks
+        setTimeout(() => {
+          if (toClick.dataset) delete toClick.dataset.rwSyntheticClick;
+        }, 0);
+      }
+    } catch (_) {}
+  }, true);
 })();

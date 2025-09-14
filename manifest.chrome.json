@@ -21,10 +21,14 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://readwise.io/bookreview/*"],
+      "matches": [
+        "https://readwise.io/bookreview",
+        "https://readwise.io/bookreview/*",
+        "https://readwise.io/dailyreview",
+        "https://readwise.io/dailyreview/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }
   ]
 }
-

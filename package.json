@@ -9,7 +9,7 @@
     "build:chrome": "node scripts/build.mjs chrome",
     "build:firefox": "node scripts/build.mjs firefox",
     "pack:chrome": "mkdir -p dist && cd build/chrome && zip -qr ../../dist/chrome.zip .",
-    "pack:firefox": "web-ext build -s build/firefox -a dist",
+    "pack:firefox": "node scripts/pack-firefox.mjs",
     "release": "node scripts/release.mjs",
     "release:patch": "node scripts/release.mjs --bump patch",
     "release:minor": "node scripts/release.mjs --bump minor",

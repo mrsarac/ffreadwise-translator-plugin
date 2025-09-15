@@ -3,8 +3,8 @@
     "ffreadwise-translator-plugin@mrsarac": {
       "updates": [
         {
-          "version": "1.0.0",
-          "update_link": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/ffreadwise-translator-plugin-1.0.0.xpi",
+          "version": "1.0.1",
+          "update_link": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/ffreadwise-translator-plugin-1.0.1.xpi",
           "applications": {
             "gecko": {
               "strict_min_version": "109.0"
@@ -15,4 +15,3 @@
     }
   }
 }
-

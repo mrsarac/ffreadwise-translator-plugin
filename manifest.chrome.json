@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "FF Readwise Translator Plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Translate Readwise highlights inline using Gemini, OpenAI, or OpenRouter.",
   "permissions": [
     "storage",
@@ -31,7 +31,9 @@
         "https://readwise.io/reviews",
         "https://readwise.io/reviews/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]

@@ -10,6 +10,33 @@
               "strict_min_version": "109.0"
             }
           }
+        },
+        {
+          "version": "1.0.2",
+          "update_link": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/ffreadwise-translator-plugin-1.0.2.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "109.0"
+            }
+          }
+        },
+        {
+          "version": "1.0.3",
+          "update_link": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/ffreadwise-translator-plugin-1.0.3.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "109.0"
+            }
+          }
+        },
+        {
+          "version": "1.0.4",
+          "update_link": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/ffreadwise-translator-plugin-1.0.4.xpi",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "109.0"
+            }
+          }
         }
       ]
     }

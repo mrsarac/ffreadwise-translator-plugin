@@ -1,9 +1,8 @@
 {
   "manifest_version": 2,
   "name": "FF Readwise Translator Plugin",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Translate Readwise highlights inline using Gemini, OpenAI, or OpenRouter.",
-
   "permissions": [
     "activeTab",
     "storage",
@@ -12,7 +11,9 @@
     "https://openrouter.ai/*"
   ],
   "background": {
-    "scripts": ["background.js"]
+    "scripts": [
+      "background.js"
+    ]
   },
   "browser_action": {
     "default_title": "Readwise Translator",
@@ -24,7 +25,9 @@
       "strict_min_version": "109.0",
       "update_url": "https://raw.githubusercontent.com/mrsarac/ffreadwise-translator-plugin/main/dist/updates.json",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   },
@@ -40,7 +43,9 @@
         "https://readwise.io/reviews",
         "https://readwise.io/reviews/*"
       ],
-      "js": ["content.js"],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ]

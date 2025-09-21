@@ -27,6 +27,14 @@
   const storage = storageAPI();
 
   const BUTTON_CLASS = 'rw-translate-btn';
+  const BULK_BUTTON_ID = 'rw-translate-all-btn';
+  const BULK_WRAPPER_CLASS = 'rw-translate-bulk-wrapper';
+  const BULK_TARGET_SELECTOR = '.list-book-metadata';
+  const WAIT_TIMEOUT_MS = 4000;
+  const WAIT_INTERVAL_MS = 120;
+  const FULL_SCROLL_MAX_ITERATIONS = 40;
+  const FULL_SCROLL_STABLE_ROUNDS = 3;
+  const FULL_SCROLL_DELAY_MS = 250;
   // Support bookreview, dailyreview, and reviews/review detail containers
   const CONTAINER_SELECTOR = '.highlights-white-container.highlight-detail-list, .highlights-white-container.highlight-detail-review';
   const CONTAINER_ROOT_SELECTOR = '.highlights-white-container';
@@ -225,6 +233,85 @@
     editable.dispatchEvent(inputEvt);
   }
 
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function waitForElement(getter, timeout = WAIT_TIMEOUT_MS, interval = WAIT_INTERVAL_MS) {
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      try {
+        const value = getter();
+        if (value) return value;
+      } catch (_) {}
+      await delay(interval);
+    }
+    return null;
+  }
+
+  async function ensureAllHighlightsLoaded(updateStatus) {
+    if (typeof window === 'undefined' || typeof window.scrollTo !== 'function') return;
+    let stableRounds = 0;
+    let lastCount = -1;
+    let lastHeight = -1;
+
+    for (let i = 0; i < FULL_SCROLL_MAX_ITERATIONS; i++) {
+      const body = document?.body;
+      const target = body ? body.scrollHeight : 0;
+      window.scrollTo(0, target);
+      await delay(FULL_SCROLL_DELAY_MS);
+
+      const count = document.querySelectorAll(CONTAINER_SELECTOR).length;
+      const height = body ? body.scrollHeight : 0;
+
+      if (typeof updateStatus === 'function') {
+        try {
+          updateStatus(count, i);
+        } catch (_) {}
+      }
+
+      if (count === lastCount && height === lastHeight) {
+        stableRounds += 1;
+        if (stableRounds >= FULL_SCROLL_STABLE_ROUNDS) break;
+      } else {
+        stableRounds = 0;
+        lastCount = count;
+        lastHeight = height;
+      }
+    }
+
+    await delay(FULL_SCROLL_DELAY_MS);
+    window.scrollTo(0, 0);
+    await delay(200);
+  }
+
+  function triggerEditMode(container) {
+    const labels = Array.from(container.querySelectorAll('.icon-column .icon-label'));
+    const editLabel = labels.find((label) => (label.textContent || '').trim().toLowerCase() === 'edit');
+    let clickable = null;
+    if (editLabel) {
+      const parent = editLabel.closest('.icon-parent');
+      if (parent) {
+        clickable = parent.querySelector('button, [role="button"], img, svg') || parent;
+      }
+    }
+    if (!clickable) {
+      clickable = container.querySelector('.icon-column .icon-parent img[src*="note"], .icon-column .icon-parent svg[src*="note"]');
+      if (clickable && clickable.closest) {
+        const parent = clickable.closest('.icon-parent');
+        if (parent) clickable = parent;
+      }
+    }
+    if (!clickable || !(clickable instanceof HTMLElement)) return false;
+    try {
+      clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+      return true;
+    } catch (e) {
+      log('triggerEditMode error', e);
+      return false;
+    }
+  }
+
   function createButton(langLabel) {
     const btn = document.createElement('button');
     btn.textContent = `Translate (${(langLabel || 'EN').toUpperCase()})`;
@@ -232,6 +319,114 @@
     btn.style.marginLeft = '8px';
     btn.title = 'Translate to the target language';
     return btn;
+  }
+
+  function createBulkButton() {
+    const btn = document.createElement('button');
+    btn.id = BULK_BUTTON_ID;
+    btn.className = 'button is-small is-primary';
+    btn.textContent = 'Edit All Highlights';
+    btn.title = 'Open every highlight on this page in edit mode';
+    return btn;
+  }
+
+  async function bulkEnterEditMode(btn) {
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Loading all highlights...';
+
+    await ensureAllHighlightsLoaded((count, i) => {
+      btn.textContent = `Loading... (${count} highlights found, scroll ${i})`;
+    });
+
+    const containers = Array.from(document.querySelectorAll(CONTAINER_SELECTOR));
+    if (!containers.length) {
+      alert('No highlights found to edit.');
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = 'Opening editors...';
+
+    const total = containers.length;
+    let processed = 0;
+    let opened = 0;
+    let failures = 0;
+    const pending = [];
+
+    for (const container of containers) {
+      processed += 1;
+      try {
+        const editable = container.querySelector(EDITABLE_SELECTOR) || container.querySelector('[contenteditable="true"]');
+        if (editable) {
+          opened += 1;
+        } else if (triggerEditMode(container)) {
+          pending.push(
+            waitForElement(
+              () => container.querySelector(EDITABLE_SELECTOR) || container.querySelector('[contenteditable="true"]'),
+              WAIT_TIMEOUT_MS * 3,
+              WAIT_INTERVAL_MS
+            )
+          );
+        } else {
+          failures += 1;
+        }
+      } catch (err) {
+        console.error('Bulk edit error', err);
+        failures += 1;
+      }
+      btn.textContent = `Opening editors... (${processed}/${total})`;
+      await delay(40);
+    }
+
+    if (pending.length) {
+      btn.textContent = 'Finalizing editors...';
+      const results = await Promise.all(pending.map((promise) => promise.catch(() => null)));
+      results.forEach((editable) => {
+        if (editable) opened += 1;
+        else failures += 1;
+      });
+    }
+
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+
+    if (failures) {
+      console.warn(`Edit mode activated for ${opened} highlight(s). ${failures} highlight(s) may need manual opening.`);
+    } else {
+      console.log(`All ${opened} highlight(s) are now in edit mode.`);
+    }
+  }
+
+  function attachBulkButton() {
+    try {
+      if (document.getElementById(BULK_BUTTON_ID)) return;
+      const target = document.querySelector(BULK_TARGET_SELECTOR) || document.querySelector('.main-list-column');
+      if (!target) return;
+
+      let wrapper = target.querySelector(`.${BULK_WRAPPER_CLASS}`);
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = BULK_WRAPPER_CLASS;
+        wrapper.style.marginTop = '0.5rem';
+        wrapper.style.display = 'flex';
+        wrapper.style.justifyContent = 'flex-end';
+        wrapper.style.flexWrap = 'wrap';
+        wrapper.style.gap = '8px';
+        target.appendChild(wrapper);
+      }
+
+      const btn = createBulkButton();
+      btn.addEventListener('click', () => {
+        if (!btn.disabled) {
+          bulkEnterEditMode(btn);
+        }
+      });
+      wrapper.appendChild(btn);
+    } catch (e) {
+      log('attachBulkButton error', e);
+    }
   }
 
   async function attachButton(container) {
@@ -286,6 +481,7 @@
   }
 
   function scan() {
+    attachBulkButton();
     document.querySelectorAll(CONTAINER_SELECTOR).forEach((el) => {
       // attachButton is async; don't await to avoid blocking mutation observer
       attachButton(el);
@@ -293,6 +489,7 @@
   }
 
   // Initial scan
+  attachBulkButton();
   scan();
 
   // Observe DOM changes to handle dynamically loaded highlights
@@ -301,6 +498,9 @@
       if (m.type === 'childList') {
         m.addedNodes.forEach((node) => {
           if (!(node instanceof HTMLElement)) return;
+          if (node.matches?.(BULK_TARGET_SELECTOR) || node.querySelector?.(BULK_TARGET_SELECTOR)) {
+            attachBulkButton();
+          }
           if (node.matches?.(CONTAINER_SELECTOR)) {
             attachButton(node);
           } else if (node.querySelector?.(CONTAINER_SELECTOR)) {

@@ -94,7 +94,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const extra = PROVIDER_INFO[p]?.models;
     if (!apiKeyHint) return;
     if (info) {
-      apiKeyHint.innerHTML = `API key help: <a href="${info.url}" target="_blank" rel="noopener noreferrer">${info.text}</a>`;
+      // Build anchor safely without using innerHTML
+      apiKeyHint.textContent = 'API key help: ';
+      const a = document.createElement('a');
+      a.href = info.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.textContent = info.text;
+      apiKeyHint.appendChild(a);
     } else {
       apiKeyHint.textContent = '';
     }
@@ -105,25 +112,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     const selected = modelSelect.value;
     const modelsEntry = PROVIDER_INFO[p]?.models;
     if (!modelHint) return;
-    let details = '';
+    // Clear existing content and rebuild safely
+    modelHint.textContent = '';
     if (modelsEntry) {
-      details += `Models: <a href="${modelsEntry.url}" target="_blank" rel="noopener noreferrer">${modelsEntry.text}</a>`;
+      const prefix = document.createTextNode('Models: ');
+      const link = document.createElement('a');
+      link.href = modelsEntry.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = modelsEntry.text;
+      modelHint.appendChild(prefix);
+      modelHint.appendChild(link);
     }
     const list = MODELS[p] || [];
     const found = list.find(m => m.id === selected);
+    const br = () => modelHint.appendChild(document.createElement('br'));
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = 'Selected: ';
     if (selected === '__custom__') {
       const customVal = modelCustom.value.trim();
+      br();
+      modelHint.appendChild(labelSpan.cloneNode(true));
       if (customVal) {
-        details += `<br/>Selected: <code>${customVal}</code>`;
+        const code = document.createElement('code');
+        code.textContent = customVal;
+        modelHint.appendChild(code);
       } else {
-        details += `<br/>Selected: <em>Custom (enter a model ID)</em>`;
+        const em = document.createElement('em');
+        em.textContent = 'Custom (enter a model ID)';
+        modelHint.appendChild(em);
       }
     } else if (found) {
-      if (found.link) details += `<br/>Selected: <a href="${found.link}" target="_blank" rel="noopener noreferrer"><code>${found.id}</code></a>`;
-      else details += `<br/>Selected: <code>${found.id}</code>`;
-      if (found.desc) details += ` — ${found.desc}`;
+      br();
+      modelHint.appendChild(labelSpan);
+      if (found.link) {
+        const a = document.createElement('a');
+        a.href = found.link;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        const code = document.createElement('code');
+        code.textContent = found.id;
+        a.appendChild(code);
+        modelHint.appendChild(a);
+      } else {
+        const code = document.createElement('code');
+        code.textContent = found.id;
+        modelHint.appendChild(code);
+      }
+      if (found.desc) {
+        const sep = document.createTextNode(' — ');
+        modelHint.appendChild(sep);
+        modelHint.appendChild(document.createTextNode(found.desc));
+      }
     }
-    modelHint.innerHTML = details;
   }
 
   function populateModelOptions() {

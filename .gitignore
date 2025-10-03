@@ -1,7 +1,3 @@
-# BMAD (local only)
-.bmad-core/
-.bmad-*/
-
 # Do not commit sensitive keys or packaged CRX files
 *.pem
 *.crx

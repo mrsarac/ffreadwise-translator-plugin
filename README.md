@@ -2,6 +2,10 @@ FF Readwise Translator
 
 An open-source browser extension that adds an inline “Translate (XX)” button to Readwise highlights on `https://readwise.io/bookreview/`. Translate the editable highlight text to your preferred language using Gemini, OpenAI, or OpenRouter.
 
+Downloads
+- Latest Chrome ZIP: https://github.com/mrsarac/ffreadwise-translator-plugin/releases/latest/download/ffreadwise-translator-plugin-chrome.zip
+- Latest Firefox XPI: https://github.com/mrsarac/ffreadwise-translator-plugin/releases/latest/download/ffreadwise-translator-plugin-firefox.xpi
+
 Features
 - Inline translate button on Readwise edit view
 - Multiple providers: Gemini, OpenAI, OpenRouter
@@ -86,6 +90,13 @@ Repo hygiene
 - Do not commit build outputs: `build/` and packaged zips are ignored.
 - If you self-host Firefox updates, keep only `dist/updates.json` and the signed `.xpi` you link there.
 - For Chrome, upload `dist/chrome.zip` to the Web Store; do not commit it.
+
+Automated Releases
+- Tag the repository with `vX.Y.Z` (for example `v1.0.5`) or run the workflow manually.
+- GitHub Actions builds and attaches download assets to the tag’s Release:
+  - `ffreadwise-translator-plugin-chrome.zip`
+  - `ffreadwise-translator-plugin-firefox.xpi`
+- The links in the Downloads section above always point to the latest release.
 
 Load for local testing
 - Chrome: `chrome://extensions` → Load unpacked → `build/chrome`

@@ -1,0 +1,59 @@
+name: Release builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: |
+          npm ci || npm i
+
+      - name: Derive tag version
+        id: vars
+        run: |
+          echo "NAME=$(node -p "require('./package.json').name")" >> $GITHUB_ENV
+          TAG_NAME="${GITHUB_REF_NAME:-}"
+          VERSION="${TAG_NAME#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG_NAME" ]; then
+            echo "::warning::Tag name not in vX.Y.Z format; falling back to package.json version"
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Prepare release build from tag version
+        run: |
+          node scripts/release.mjs --version "$VERSION"
+
+      - name: Create stable-named assets for README links
+        run: |
+          mkdir -p dist
+          cp dist/chrome.zip "dist/${NAME}-chrome.zip"
+          cp "dist/${NAME}-${VERSION}.xpi" "dist/${NAME}-firefox.xpi"
+
+      - name: Upload assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/${{ env.NAME }}-chrome.zip
+            dist/${{ env.NAME }}-firefox.xpi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

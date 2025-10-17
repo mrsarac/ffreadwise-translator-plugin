@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const modelSelect = document.getElementById('modelSelect');
   const modelCustom = document.getElementById('modelCustom');
   const lang = document.getElementById('language');
+  const promptInput = document.getElementById('translationPrompt');
   const provider = document.getElementById('provider');
   const btn = document.getElementById('save');
   const delBtn = document.getElementById('deleteKey');
@@ -55,6 +56,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     openrouter: 'openai/gpt-4o-mini',
     openai: 'gpt-4o-mini',
   };
+  const DEFAULT_TRANSLATION_PROMPT = [
+    'Translate the following text to {{targetLanguage}}.',
+    'Preserve meaning, tone, and basic formatting.',
+    'Only return the translated {{targetLanguage}} text without comments.',
+  ].join('\n');
 
   // Provider info: API key and model links
   const PROVIDER_INFO = {
@@ -231,9 +237,13 @@ document.addEventListener('DOMContentLoaded', async () => {
       'geminiModel',
       'openrouterModel',
       'openaiModel',
+      'translationPrompt',
     ]);
     provider.value = stored?.provider || 'gemini';
     if (stored?.targetLanguage) lang.value = stored.targetLanguage;
+    if (promptInput) {
+      promptInput.value = stored?.translationPrompt || DEFAULT_TRANSLATION_PROMPT;
+    }
     await loadForProvider();
   } catch (e) {
     console.error('Storage get error', e);
@@ -269,6 +279,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   btn.addEventListener('click', async () => {
     const apiKey = input.value.trim();
     const targetLanguage = (lang.value || '').trim().toLowerCase() || 'en';
+    const promptValue = (promptInput?.value || '').replace(/\r\n/g, '\n').trim();
     const keyName = PROVIDER_KEYS[provider.value];
     const modelName = PROVIDER_MODELS[provider.value];
     if (!apiKey) {
@@ -279,7 +290,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       const selected = modelSelect.value;
       const modelVal = selected === '__custom__' ? (modelCustom.value || '').trim() : selected;
       const toSave = { [keyName]: apiKey, targetLanguage, provider: provider.value };
+      if (promptValue) {
+        toSave.translationPrompt = promptValue;
+      } else {
+        await storage.remove(['translationPrompt']);
+      }
       await storage.set(toSave);
+      if (!promptValue && promptInput) {
+        promptInput.value = DEFAULT_TRANSLATION_PROMPT;
+      }
       if (modelVal) {
         await storage.set({ [modelName]: modelVal });
       } else {

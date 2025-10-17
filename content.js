@@ -28,8 +28,10 @@
 
   const BUTTON_CLASS = 'rw-translate-btn';
   const BULK_BUTTON_ID = 'rw-translate-all-btn';
+  const SAVE_ALL_BUTTON_ID = 'rw-save-all-btn';
   const BULK_WRAPPER_CLASS = 'rw-translate-bulk-wrapper';
   const BULK_TARGET_SELECTOR = '.list-book-metadata';
+  const TRANSLATED_MARKER = 'rwTranslated';
   const WAIT_TIMEOUT_MS = 4000;
   const WAIT_INTERVAL_MS = 120;
   const FULL_SCROLL_MAX_ITERATIONS = 40;
@@ -41,10 +43,24 @@
   const SCAN_INTERVAL_MS = 1500; // periodic safety scan
   const ACTIONS_SELECTOR = '.highlight-top-bar .edit-highlight-area .highlight-top-bar-actions';
   const EDITABLE_SELECTOR = '.highlight-text.editing-text';
+  const DEFAULT_TRANSLATION_PROMPT = [
+    'Translate the following text to {{targetLanguage}}.',
+    'Preserve meaning, tone, and basic formatting.',
+    'Only return the translated {{targetLanguage}} text without comments.',
+  ].join('\n');
 
-  function log(...args) {
+  function normalizePromptTemplate(value) {
+    if (typeof value === 'string' && value.trim()) return value;
+    return DEFAULT_TRANSLATION_PROMPT;
+  }
+
+  function resolvePrompt(template, targetLanguage) {
+    return normalizePromptTemplate(template).replace(/\{\{\s*targetLanguage\s*\}\}/gi, targetLanguage);
+  }
+
+  function log() {
     // Lightweight namespaced logger
-    // console.debug('[RW-TR]', ...args);
+    // console.debug('[RW-TR]', ...arguments);
   }
 
   async function getSettings() {
@@ -58,6 +74,7 @@
         'geminiModel',
         'openrouterModel',
         'openaiModel',
+        'translationPrompt',
       ]);
 
       const provider = result?.provider || 'gemini';
@@ -92,22 +109,18 @@
           throw new Error(`${provider} API key is required.`);
         }
       }
-      return { provider, apiKey, targetLanguage, model };
+      const promptTemplate = normalizePromptTemplate(result?.translationPrompt);
+      return { provider, apiKey, targetLanguage, model, promptTemplate };
     } catch (e) {
       throw e;
     }
   }
 
-  async function translateWithGemini(text, apiKey, targetLanguage = 'en', model = 'gemini-1.5-flash') {
+  async function translateWithGemini(text, apiKey, targetLanguage = 'en', model = 'gemini-1.5-flash', promptTemplate = DEFAULT_TRANSLATION_PROMPT) {
     const modelId = String(model || 'gemini-1.5-flash');
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelId)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-    const prompt = [
-      `Translate the following text to ${targetLanguage}.`,
-      'Preserve meaning, tone, and basic formatting.',
-      `Only return the translated ${targetLanguage} text without comments.`,
-      '',
-      text,
-    ].join('\n');
+    const instructions = resolvePrompt(promptTemplate, targetLanguage);
+    const prompt = [instructions, '', text].join('\n');
 
     const body = {
       contents: [
@@ -135,12 +148,13 @@
     return textOut.trim();
   }
 
-  async function translateWithOpenAI(text, apiKey, targetLanguage = 'en', model = 'gpt-4o-mini') {
+  async function translateWithOpenAI(text, apiKey, targetLanguage = 'en', model = 'gpt-4o-mini', promptTemplate = DEFAULT_TRANSLATION_PROMPT) {
     const endpoint = 'https://api.openai.com/v1/chat/completions';
+    const instructions = resolvePrompt(promptTemplate, targetLanguage);
     const body = {
       model: String(model || 'gpt-4o-mini'),
       messages: [
-        { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
+        { role: 'system', content: instructions },
         { role: 'user', content: text },
       ],
       temperature: 0.2,
@@ -163,12 +177,13 @@
     return String(textOut).trim();
   }
 
-  async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en', model = 'openai/gpt-4o-mini') {
+  async function translateWithOpenRouter(text, apiKey, targetLanguage = 'en', model = 'openai/gpt-4o-mini', promptTemplate = DEFAULT_TRANSLATION_PROMPT) {
     const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
+    const instructions = resolvePrompt(promptTemplate, targetLanguage);
     const body = {
       model: String(model || 'openai/gpt-4o-mini'),
       messages: [
-        { role: 'system', content: `You are a translation engine. Translate user text to ${targetLanguage}. Return only the translated text.` },
+        { role: 'system', content: instructions },
         { role: 'user', content: text },
       ],
       temperature: 0.2,
@@ -195,14 +210,14 @@
   }
 
   async function translateWithProvider(text, settings) {
-    const { provider, apiKey, targetLanguage, model } = settings;
+    const { provider, apiKey, targetLanguage, model, promptTemplate } = settings;
     // Prefer background relay to avoid CORS issues (Chrome MV3)
     try {
       if (chrome?.runtime?.sendMessage) {
         const res = await new Promise((resolve) => {
           try {
             chrome.runtime.sendMessage(
-              { type: 'rw.translate', text, provider, apiKey, targetLanguage, model },
+              { type: 'rw.translate', text, provider, apiKey, targetLanguage, model, promptTemplate },
               (response) => resolve(response)
             );
           } catch (e) {
@@ -219,9 +234,9 @@
     }
 
     // Fallback: direct fetch from content script
-    if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage, model);
-    if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage, model);
-    if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage, model);
+    if (provider === 'gemini') return translateWithGemini(text, apiKey, targetLanguage, model, promptTemplate);
+    if (provider === 'openai') return translateWithOpenAI(text, apiKey, targetLanguage, model, promptTemplate);
+    if (provider === 'openrouter') return translateWithOpenRouter(text, apiKey, targetLanguage, model, promptTemplate);
     throw new Error(`Unsupported provider: ${provider}`);
   }
 
@@ -231,6 +246,14 @@
     editable.textContent = newText;
     const inputEvt = new InputEvent('input', { bubbles: true, cancelable: true });
     editable.dispatchEvent(inputEvt);
+
+    // Mark the container as translated
+    const container = editable.closest(CONTAINER_ROOT_SELECTOR);
+    if (container) {
+      container.dataset[TRANSLATED_MARKER] = '1';
+      // Update Save All button visibility
+      setTimeout(() => updateSaveAllButtonVisibility(), 100);
+    }
   }
 
   function delay(ms) {
@@ -243,7 +266,7 @@
       try {
         const value = getter();
         if (value) return value;
-      } catch (_) {}
+      } catch (_) { }
       await delay(interval);
     }
     return null;
@@ -267,7 +290,7 @@
       if (typeof updateStatus === 'function') {
         try {
           updateStatus(count, i);
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (count === lastCount && height === lastHeight) {
@@ -328,6 +351,30 @@
     btn.textContent = 'Edit All Highlights';
     btn.title = 'Open every highlight on this page in edit mode';
     return btn;
+  }
+
+  function createSaveAllButton() {
+    const btn = document.createElement('button');
+    btn.id = SAVE_ALL_BUTTON_ID;
+    btn.className = 'button is-small is-success';
+    btn.textContent = 'Save All Translated';
+    btn.title = 'Save all translated highlights';
+    return btn;
+  }
+
+  function updateSaveAllButtonVisibility() {
+    const saveBtn = document.getElementById(SAVE_ALL_BUTTON_ID);
+    if (!saveBtn) return;
+
+    // Check if there are any translated highlights in edit mode
+    const containers = Array.from(document.querySelectorAll(CONTAINER_SELECTOR));
+    const hasTranslatedEditable = containers.some(container => {
+      const editable = container.querySelector(EDITABLE_SELECTOR) || container.querySelector('[contenteditable="true"]');
+      const isTranslated = container.dataset[TRANSLATED_MARKER] === '1';
+      return editable !== null && isTranslated;
+    });
+
+    saveBtn.style.display = hasTranslatedEditable ? '' : 'none';
   }
 
   async function bulkEnterEditMode(btn) {
@@ -399,6 +446,144 @@
     }
   }
 
+  function triggerSaveMode(container) {
+    // First try: Look for the Save button in the actions area
+    const saveButton = container.querySelector('.highlight-top-bar-actions .button:not(.rw-translate-btn)');
+    if (saveButton && saveButton.textContent && saveButton.textContent.toLowerCase().includes('save')) {
+      try {
+        saveButton.click();
+        return true;
+      } catch (e) {
+        log('triggerSaveMode save button error', e);
+      }
+    }
+
+    // Second try: Look for check/save icon in icon column
+    const labels = Array.from(container.querySelectorAll('.icon-column .icon-label'));
+    const saveLabel = labels.find((label) => {
+      const text = (label.textContent || '').trim().toLowerCase();
+      return text === 'save' || text === 'check' || text === 'done';
+    });
+
+    if (saveLabel) {
+      const parent = saveLabel.closest('.icon-parent');
+      if (parent) {
+        try {
+          parent.click();
+          return true;
+        } catch (e) {
+          log('triggerSaveMode icon parent error', e);
+        }
+      }
+    }
+
+    // Third try: Look for check icon directly
+    const checkIcon = container.querySelector('.icon-column .icon-parent img[src*="check"], .icon-column .icon-parent svg[data-icon*="check"]');
+    if (checkIcon) {
+      const parent = checkIcon.closest('.icon-parent');
+      if (parent) {
+        try {
+          parent.click();
+          return true;
+        } catch (e) {
+          log('triggerSaveMode check icon error', e);
+        }
+      }
+    }
+
+    // Fourth try: Press Escape to exit edit mode (this often saves)
+    const editable = container.querySelector(EDITABLE_SELECTOR) || container.querySelector('[contenteditable="true"]');
+    if (editable) {
+      try {
+        editable.focus();
+        const escapeEvent = new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          which: 27,
+          bubbles: true,
+          cancelable: true
+        });
+        editable.dispatchEvent(escapeEvent);
+        return true;
+      } catch (e) {
+        log('triggerSaveMode escape error', e);
+      }
+    }
+
+    // Final fallback: try pressing Enter
+    if (editable) {
+      try {
+        const enterEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true
+        });
+        editable.dispatchEvent(enterEvent);
+        return true;
+      } catch (e) {
+        log('triggerSaveMode enter fallback error', e);
+      }
+    }
+
+    return false;
+  }
+
+  async function bulkSaveAll(btn) {
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = 'Saving...';
+
+    // Find all containers that are currently in edit mode AND have been translated
+    const containers = Array.from(document.querySelectorAll(CONTAINER_SELECTOR));
+    const translatedEditableContainers = containers.filter(container => {
+      const editable = container.querySelector(EDITABLE_SELECTOR) || container.querySelector('[contenteditable="true"]');
+      const isTranslated = container.dataset[TRANSLATED_MARKER] === '1';
+      return editable !== null && isTranslated;
+    });
+
+    if (!translatedEditableContainers.length) {
+      alert('No translated highlights found to save. Use the Translate button first.');
+      btn.textContent = originalLabel;
+      btn.disabled = false;
+      return;
+    }
+
+    const total = translatedEditableContainers.length;
+    let processed = 0;
+    let saved = 0;
+    let failures = 0;
+
+    for (const container of translatedEditableContainers) {
+      processed += 1;
+      try {
+        if (triggerSaveMode(container)) {
+          saved += 1;
+          // Remove the translated marker after successful save
+          delete container.dataset[TRANSLATED_MARKER];
+        } else {
+          failures += 1;
+        }
+      } catch (err) {
+        console.error('Bulk save error', err);
+        failures += 1;
+      }
+
+      btn.textContent = `Saving... (${processed}/${total})`;
+      await delay(200); // Slightly longer delay to ensure save completes
+    }
+
+    btn.textContent = originalLabel;
+    btn.disabled = false;
+
+    if (failures > 0) {
+      alert(`Saved ${saved} translated highlight(s). ${failures} highlight(s) could not be saved automatically - please save them manually.`);
+    }
+  }
+
   function attachBulkButton() {
     try {
       if (document.getElementById(BULK_BUTTON_ID)) return;
@@ -417,13 +602,24 @@
         target.appendChild(wrapper);
       }
 
-      const btn = createBulkButton();
-      btn.addEventListener('click', () => {
-        if (!btn.disabled) {
-          bulkEnterEditMode(btn);
+      // Create and add Edit All button
+      const editBtn = createBulkButton();
+      editBtn.addEventListener('click', () => {
+        if (!editBtn.disabled) {
+          bulkEnterEditMode(editBtn);
         }
       });
-      wrapper.appendChild(btn);
+      wrapper.appendChild(editBtn);
+
+      // Create and add Save All button
+      const saveBtn = createSaveAllButton();
+      saveBtn.style.display = 'none'; // Initially hidden
+      saveBtn.addEventListener('click', () => {
+        if (!saveBtn.disabled) {
+          bulkSaveAll(saveBtn);
+        }
+      });
+      wrapper.appendChild(saveBtn);
     } catch (e) {
       log('attachBulkButton error', e);
     }
@@ -441,7 +637,7 @@
       try {
         const { targetLanguage } = await storage.get(['targetLanguage']);
         if (targetLanguage) lang = String(targetLanguage).toLowerCase();
-      } catch (_) {}
+      } catch (_) { }
 
       const btn = createButton(lang);
       actions.appendChild(btn);
@@ -486,6 +682,8 @@
       // attachButton is async; don't await to avoid blocking mutation observer
       attachButton(el);
     });
+    // Update Save All button visibility
+    updateSaveAllButtonVisibility();
   }
 
   // Initial scan
@@ -551,7 +749,7 @@
         }
       });
     });
-  } catch (_) {}
+  } catch (_) { }
 
   // Make the "Edit" label act like the Edit icon (open edit area)
   // Some parts of the page only bind click on the icon, not the label.
@@ -591,6 +789,6 @@
           if (toClick.dataset) delete toClick.dataset.rwSyntheticClick;
         }, 0);
       }
-    } catch (_) {}
+    } catch (_) { }
   }, true);
 })();
